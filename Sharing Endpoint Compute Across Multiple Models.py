@@ -21,7 +21,7 @@ from sklearn.tree import DecisionTreeClassifier
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Training Two Models for Demonstrating Compute Sharing
+# MAGIC ## Train Two Models for Demonstrating Compute Sharing
 
 # COMMAND ----------
 
