@@ -4,8 +4,8 @@
 
 # COMMAND ----------
 
-models = ['bilal_iris_model', '1_KNeighbors', 'credit_risk']
-multimodel_endpoint_name = 'bilalMultimodel3'
+models = ['bilal_iris_model', 'bilal_wine_model'] #these models are trained below
+multimodel_endpoint_name = 'bilalMultimodel'
 workload_size = "small"
 scale_to_zero_enabled = True
 
@@ -31,6 +31,60 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
 import requests
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Training Two Models for Demonstrating Compute Sharing
+
+# COMMAND ----------
+
+# This cell trains two example models (Iris and Wine) that can be utilized to showcase the concept of compute sharing.
+# If you have already logged models, you can skip this step and proceed to the next cells.
+
+# Load the Iris dataset
+iris = datasets.load_iris()
+X_iris = iris.data
+y_iris = iris.target
+feature_names_iris = iris.feature_names
+
+# Load the Wine dataset
+wine = datasets.load_wine()
+X_wine = wine.data
+y_wine = wine.target
+feature_names_wine = wine.feature_names
+
+# Split both datasets into a training set and a test set
+X_train_iris, X_test_iris, y_train_iris, y_test_iris = train_test_split(X_iris, y_iris, test_size=0.3, random_state=42)
+X_train_wine, X_test_wine, y_train_wine, y_test_wine = train_test_split(X_wine, y_wine, test_size=0.3, random_state=42)
+
+def train_model(dataset_name, X_train, y_train, X_test, y_test, feature_names):
+    with mlflow.start_run(run_name=dataset_name):
+
+        # Train the model
+        model = DecisionTreeClassifier()
+        model.fit(X_train, y_train)
+
+        # Create and log model signature
+        input_schema = Schema([ColSpec(DataType.double, name=feature_name) for feature_name in feature_names])
+        output_schema = Schema([ColSpec(DataType.integer)])
+        signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+        
+        # Log input example
+        input_example = pd.DataFrame([X_test[0]], columns=feature_names)
+
+        if (dataset_name == "bilal_iris_model"):
+          mlflow.sklearn.log_model(model, "model", signature=signature, input_example=input_example, pip_requirements=['mlflow==2.4.1'])
+        else:
+          mlflow.sklearn.log_model(model, "model", signature=signature, input_example=input_example)
+
+
+        # Register the model
+        mlflow.register_model(f"runs:/{mlflow.active_run().info.run_id}/model", dataset_name)
+
+# Train the models
+train_model("bilal_iris_model", X_train_iris, y_train_iris, X_test_iris, y_test_iris, feature_names_iris)
+train_model("bilal_wine_model", X_train_wine, y_train_wine, X_test_wine, y_test_wine, feature_names_wine)
 
 # COMMAND ----------
 
@@ -133,6 +187,11 @@ for name in models:
 # Optional - Combines 'requirements.txt' from logged models, preferring the highest version in version conflicts.
 requirements = merge_requirements(artifact_dir)
 
+# Prepare input example to be logged with the model
+# model, version = 'bilal_wine_model', '2'
+# input_example = pd.read_json(f'{artifact_dir}/{model}/input_example.json', orient='split')
+# input_example['model'] = model
+
 # Log the Python model
 with mlflow.start_run() as run:
     mlflow.pyfunc.log_model(
@@ -140,6 +199,7 @@ with mlflow.start_run() as run:
         python_model=MultiModelPyfunc(),
         artifacts={'models': f'{artifact_dir}/'},
         registered_model_name=multimodel_endpoint_name,
+        # input_example=input_example,
         pip_requirements=requirements
     )
 
@@ -208,3 +268,7 @@ def func_create_endpoint(model_serving_endpoint_name):
 # COMMAND ----------
 
 func_create_endpoint(multimodel_endpoint_name)
+
+# COMMAND ----------
+
+
