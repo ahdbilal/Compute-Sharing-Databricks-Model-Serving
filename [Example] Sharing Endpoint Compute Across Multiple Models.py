@@ -4,8 +4,12 @@
 
 # COMMAND ----------
 
-models = ['bilal_iris_model', 'bilal_wine_model'] #these models are trained below
-multimodel_endpoint_name = 'bilalMultimodel'
+# Provide a list of models that should be deployed as a multimodel to endpoint
+# These are trained below in this notebook
+models = ['bilal_iris_model', 'bilal_wine_model']
+
+# Provide the name and configuration of the multimodel endpoint
+multimodel_endpoint_name = 'Multimodel'
 workload_size = "small"
 scale_to_zero_enabled = True
 
@@ -188,9 +192,9 @@ for name in models:
 requirements = merge_requirements(artifact_dir)
 
 # Prepare input example to be logged with the model
-# model, version = 'bilal_wine_model', '2'
-# input_example = pd.read_json(f'{artifact_dir}/{model}/input_example.json', orient='split')
-# input_example['model'] = model
+model = 'bilal_wine_model'
+input_example = pd.read_json(f'{artifact_dir}/{model}/input_example.json', orient='split')
+input_example['model'] = model
 
 # Log the Python model
 with mlflow.start_run() as run:
@@ -199,7 +203,7 @@ with mlflow.start_run() as run:
         python_model=MultiModelPyfunc(),
         artifacts={'models': f'{artifact_dir}/'},
         registered_model_name=multimodel_endpoint_name,
-        # input_example=input_example,
+        input_example=input_example,
         pip_requirements=requirements
     )
 

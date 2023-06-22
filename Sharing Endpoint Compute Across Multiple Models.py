@@ -4,8 +4,11 @@
 
 # COMMAND ----------
 
-models = ['bilal_iris_model', '1_KNeighbors', 'credit_risk']
-multimodel_endpoint_name = 'bilalMultimodel3'
+# Provide a list of models that should be deployed as a multimodel to a endpoint
+models = ['bilal_iris_model', 'bilal_wine_model']
+
+# Provide the name and configuration of the multimodel endpoint
+multimodel_endpoint_name = 'Multimodel'
 workload_size = "small"
 scale_to_zero_enabled = True
 
