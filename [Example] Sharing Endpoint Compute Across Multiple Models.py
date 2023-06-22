@@ -148,16 +148,14 @@ class MultiModelPyfunc(mlflow.pyfunc.PythonModel):
 # COMMAND ----------
 
 # It is recommended to maintain consistent package versions across all logged models to prevent potential conflicts.
-# In cases where differences exist, the following function merges 'requirements.txt' files from each model, prioritizing the highest version number when a conflict arises.
-
-from packaging.version import parse as parse_version, InvalidVersion
+# In cases where differences exist, the following optional function merges 'requirements.txt' files from each model, prioritizing the highest version number when a conflict arises.
 
 def merge_requirements(directory):
     requirements = {}
 
     for root, dirs, files in os.walk(directory):
         for filename in files:
-            if filename.startswith('requirements') and filename.endswith('.txt'):
+            if filename.endswith('requirements.txt'):
                 with open(os.path.join(root, filename), 'r') as f:
                     for line in f:
                         line = line.strip()
@@ -165,12 +163,15 @@ def merge_requirements(directory):
                             name, version = line.split('==')
                             try:
                                 parsed_version = parse_version(version)
-                                if name not in requirements or parsed_version > parse_version(requirements.get(name, "0.0")):
+                                old_version = parse_version(requirements.get(name, "0.0"))
+                                if parsed_version > old_version:
                                     requirements[name] = version
+                                elif parsed_version.release[0] < old_version.release[0]:
+                                    print(f"Warning: Major version upgrade detected for {os.path.basename(root)} in library {name} from {parsed_version} to {old_version}. This may introduce incompatibility issues.")
                             except InvalidVersion:
-                                continue
-                        else:
-                            requirements[line] = requirements.get(line, "")
+                                print(f"Warning: Invalid version {version} for package {name}. Skipping this version.")
+                        elif line not in requirements:
+                            requirements[line] = ""
 
     return [f"{name}=={version}" if version else name for name, version in requirements.items()]
 
@@ -188,8 +189,26 @@ for name in models:
     local_path = os.path.join(artifact_dir, name)
     mlflow.artifacts.download_artifacts(model_uri, dst_path=local_path)
 
-# Optional - Combines 'requirements.txt' from logged models, preferring the highest version in version conflicts.
+# Download specified version of each model and store in the temporary directory
+artifact_dir = tempfile.mkdtemp()
+for name in models:
+    model_uri = f'models:/{name}/latest'
+    local_path = os.path.join(artifact_dir, name)
+    mlflow.artifacts.download_artifacts(model_uri, dst_path=local_path)
+
+# Optional(useful when explicit dependencies are provided) Combines 'requirements.txt' from logged models, preferring the highest version in version conflicts. 
 requirements = merge_requirements(artifact_dir)
+
+# Log the Python model
+with mlflow.start_run() as run:
+    mlflow.pyfunc.log_model(
+        artifact_path="bilal_multimodel",
+        python_model=MultiModelPyfunc(),
+        artifacts={'models': f'{artifact_dir}/'},
+        registered_model_name=multimodel_endpoint_name,
+        pip_requirements=requirements
+    )
+
 
 # Prepare input example to be logged with the model
 model = 'bilal_wine_model'
@@ -272,7 +291,3 @@ def func_create_endpoint(model_serving_endpoint_name):
 # COMMAND ----------
 
 func_create_endpoint(multimodel_endpoint_name)
-
-# COMMAND ----------
-
-
