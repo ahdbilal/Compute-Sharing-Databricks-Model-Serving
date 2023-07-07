@@ -77,6 +77,8 @@ def train_model(dataset_name, X_train, y_train, X_test, y_test, feature_names):
         # Log input example
         input_example = pd.DataFrame([X_test[0]], columns=feature_names)
 
+        mlflow.sklearn.log_model(model, "model", signature=signature, input_example=input_example)
+
         # Register the model
         mlflow.register_model(f"runs:/{mlflow.active_run().info.run_id}/model", dataset_name)
 
