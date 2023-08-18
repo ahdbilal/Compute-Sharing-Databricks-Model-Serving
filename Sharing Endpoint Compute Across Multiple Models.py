@@ -29,10 +29,6 @@ from mlflow.models.signature import infer_signature
 from mlflow.models import ModelSignature
 from mlflow.types import ColSpec, DataType, Schema
 
-from sklearn import datasets
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-
 import requests
 
 # COMMAND ----------
