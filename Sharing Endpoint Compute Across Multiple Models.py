@@ -5,7 +5,7 @@
 # COMMAND ----------
 
 # Provide a list of models that should be deployed as a multimodel to a endpoint
-models = ['bilal_iris_model', 'bilal_wine_model', 'credit_risk']
+models = ['iris_model', 'wine_model', 'credit_risk']
 
 # Provide the name and configuration of the multimodel endpoint
 multimodel_endpoint_name = 'Multimodel'
